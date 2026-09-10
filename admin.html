@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>역사 놀토 - 관리자 사령탑</title>
+<title>역사 놀라운 평일 선생님 모드</title>
 <style>
   @font-face {
     font-family: 'GangwonEduModu';
@@ -30,13 +30,7 @@
     padding: 24px;
     margin: 0;
   }
-  h2 {
-    font-family: 'GangwonEduModu', cursive;
-    font-weight: 700;
-    font-size: 34px;
-    color: var(--chalk-yellow);
-    margin: 0 0 18px;
-  }
+  h2, h3 { margin: 0; }
   .banner {
     background: linear-gradient(160deg, var(--board-green-1), var(--board-green-2));
     border: 6px solid var(--wood-dark);
@@ -45,21 +39,48 @@
     margin-bottom: 22px;
     box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
   }
-  .banner h2 { margin: 0; }
-  .banner p { margin: 4px 0 0; color: rgba(244,242,233,0.7); font-size: 14px; }
+  .banner h2 {
+    font-family: 'GangwonEduModu', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--chalk-yellow);
+  }
+  .banner p { margin: 4px 0 0; color: rgba(244,242,233,0.7); font-size: 14px; font-weight: 400; }
 
-  .control-panel {
+  .round-panel {
     background: #1e293b;
     padding: 20px;
     border-radius: 10px;
-    margin-bottom: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
+    margin-bottom: 18px;
+    border-left: 6px solid #475569;
   }
+  .round-panel.round1 { border-left-color: #22c55e; }
+  .round-panel.round2 { border-left-color: #3b82f6; }
+  .round-panel h3 { font-size: 20px; margin-bottom: 14px; }
+
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+  .time-row input {
+    width: 64px;
+    padding: 8px;
+    font-size: 15px;
+    font-family: 'GangwonEduModu', sans-serif;
+    font-weight: 700;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+  }
+
+  .button-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   button {
-    padding: 10px 20px;
+    padding: 12px 22px;
     font-family: 'GangwonEduModu', sans-serif;
     font-weight: 700;
     font-size: 15px;
@@ -70,56 +91,106 @@
     transition: filter 0.15s;
   }
   button:hover { filter: brightness(1.1); }
-  input {
-    padding: 10px;
-    font-size: 15px;
-    border: 1px solid #334155;
-    border-radius: 6px;
+
+  .answer-input-full {
+    width: 100%;
+    padding: 26px 18px;
+    font-size: 26px;
+    border: 2px solid #334155;
+    border-radius: 8px;
     background: #0f172a;
     color: white;
+    font-family: 'GangwonEduModu', sans-serif;
+    font-weight: 700;
+    min-height: 76px;
   }
+  .answer-input-full::placeholder { color: #64748b; }
+
+  .reset-panel {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
   .board {
     background: #0f172a;
     padding: 20px;
     border-radius: 10px;
-    min-height: 200px;
+    min-height: 80px;
+    margin-bottom: 18px;
   }
-  .board h3 { display: flex; justify-content: space-between; align-items: center; font-weight: normal; }
-  #submit-count { font-size: 14px; color: #94a3b8; }
+  .board h3 { display: flex; justify-content: space-between; align-items: center; font-weight: normal; font-size: 17px; }
+  #submit-count { font-size: 14px; color: #94a3b8; font-weight: 400; }
   ul { list-style: none; padding: 0; margin: 0; }
   li {
     margin-bottom: 8px;
-    font-size: 17px;
+    font-size: 16px;
     padding: 8px 12px;
     background: #1e293b;
     border-radius: 6px;
   }
+  #result-board { display: none; border: 2px solid var(--chalk-yellow); }
+  #result-board h3 { color: var(--chalk-yellow); }
+  #result-board li { background: #1e293b; }
 </style>
 </head>
 <body>
   <div class="banner">
-    <h2>🛠 역사 놀토 사령탑</h2>
-    <p>정답을 입력하고 라운드를 시작하면 학생 화면에 빈칸이 표시됩니다.</p>
+    <h2>🏫 역사 놀라운 평일 선생님 모드</h2>
+    <p>두 라운드 정답을 미리 입력해두고, 라운드별 시작/종료 버튼만 눌러 진행하세요.</p>
   </div>
 
-  <div class="control-panel">
-    <input type="text" id="admin-answer" placeholder="정답 입력 (예: 조선왕조실록)">
-    <input type="number" id="time-limit" value="60" style="width: 80px;" title="제한시간(초)">
+  <div class="round-panel round1">
+    <h3>🥇 1라운드</h3>
+    <div class="time-row">
+      제한시간:
+      <input type="number" id="r1-min" value="1" min="0"> 분
+      <input type="number" id="r1-sec" value="0" min="0" max="59"> 초
+    </div>
+    <div class="button-row">
+      <button id="r1-start-btn" onclick="startRound(1)" style="background:#22c55e;">▶ 1라운드 시작</button>
+      <button onclick="endRound(1)" style="background:#ef4444;">■ 1라운드 종료</button>
+    </div>
+    <input type="text" id="r1-answer" class="answer-input-full" placeholder="1라운드 정답 입력 (예: 조선왕조실록)">
+  </div>
 
-    <button onclick="startRound()" style="background:#22c55e;">▶ 라운드 시작</button>
-    <button onclick="endRound()" style="background:#ef4444;">■ 강제 종료</button>
-    <button onclick="checkAnswers()" style="background:#3b82f6;">✔ 오답률 확인</button>
-    <button onclick="publishFinalRanking()" style="background:#a855f7;">🏆 명예의 전당 발표</button>
+  <div class="round-panel round2">
+    <h3>🥈 2라운드</h3>
+    <div class="time-row">
+      제한시간:
+      <input type="number" id="r2-min" value="1" min="0"> 분
+      <input type="number" id="r2-sec" value="0" min="0" max="59"> 초
+    </div>
+    <div class="button-row">
+      <button id="r2-start-btn" onclick="startRound(2)" style="background:#22c55e;">▶ 2라운드 시작</button>
+      <button onclick="endRound(2)" style="background:#ef4444;">■ 2라운드 종료</button>
+    </div>
+    <input type="text" id="r2-answer" class="answer-input-full" placeholder="2라운드 정답 입력 (예: 동학농민운동)">
+  </div>
+
+  <div class="reset-panel">
+    <button onclick="resetAll()" style="background:#dc2626;">🗑 전체 초기화 (문제 + 학생 기록)</button>
+    <button onclick="resetRecordsOnly()" style="background:#f59e0b;">♻ 학생 기록만 초기화 (문제 유지)</button>
+  </div>
+
+  <div class="board" id="result-board">
+    <h3 id="result-title">📣 라운드 결과</h3>
+    <ul id="result-list"></ul>
   </div>
 
   <div class="board">
-    <h3>📊 실시간 학생 제출 현황 <span id="submit-count"></span></h3>
+    <h3>📊 실시간 제출 현황 (현재: <span id="current-round-label">대기 중</span>) <span id="submit-count"></span></h3>
     <ul id="student-status"></ul>
+  </div>
+
+  <div style="text-align:center; font-size:12px; color:#475569; margin-top: 10px; padding-bottom: 10px;">
+    Created by 조성주 T
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBakDXeQGKrR3SdK-rXIOkMs_gl70uKmm4",
@@ -134,53 +205,182 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let currentAnswer = "";
-    let studentData = {};
-
     function escapeHtml(str) {
       return String(str)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // 1. 라운드 시작 (이전 제출기록을 먼저 비우고 새 라운드 세팅)
-    window.startRound = function () {
-      currentAnswer = document.getElementById('admin-answer').value;
-      const timeLimit = parseInt(document.getElementById('time-limit').value);
-      if (!currentAnswer) { alert("정답을 입력하세요."); return; }
-      if (!timeLimit || timeLimit <= 0) { alert("제한시간을 올바르게 입력하세요."); return; }
+    // ---------- 정답/시간 사전 입력값 Firebase에 동기화 ----------
+    const configFields = ['r1-answer', 'r1-min', 'r1-sec', 'r2-answer', 'r2-min', 'r2-sec'];
+    let suppressConfigWrite = false;
 
-      // 이전 라운드 제출기록 초기화 -> 학생 목록에 이전 답이 남지 않도록
-      set(ref(db, 'submissions'), null).then(() => {
-        set(ref(db, 'quizState'), {
-          isRoundActive: true,
-          answerLength: currentAnswer.length,
-          endTime: Date.now() + (timeLimit * 1000),
-          finalRanking: null
-        });
+    function saveConfig() {
+      if (suppressConfigWrite) return;
+      update(ref(db, 'config'), {
+        round1Answer: document.getElementById('r1-answer').value,
+        round1Minutes: parseInt(document.getElementById('r1-min').value) || 0,
+        round1Seconds: parseInt(document.getElementById('r1-sec').value) || 0,
+        round2Answer: document.getElementById('r2-answer').value,
+        round2Minutes: parseInt(document.getElementById('r2-min').value) || 0,
+        round2Seconds: parseInt(document.getElementById('r2-sec').value) || 0,
       });
-      alert("라운드 시작! 학생들 화면에 빈칸이 열렸습니다.");
-    };
-
-    // 2. 강제 종료
-    window.endRound = function () {
-      update(ref(db, 'quizState'), { isRoundActive: false });
-      alert("학생 화면 입력이 차단되었습니다.");
-    };
-
-    // 실시간 제출 현황판 수신
-    onValue(ref(db, 'submissions'), (snapshot) => {
-      studentData = snapshot.val() || {};
-      let html = '';
-      for (let id in studentData) {
-        html += `<li>${escapeHtml(id)} : ${escapeHtml(studentData[id].answer)} (제출완료)</li>`;
-      }
-      document.getElementById('student-status').innerHTML = html;
-      document.getElementById('submit-count').innerText = `(제출 ${Object.keys(studentData).length}명)`;
+    }
+    configFields.forEach(id => {
+      document.getElementById(id).addEventListener('input', saveConfig);
     });
 
-    // 레벤슈타인 거리 알고리즘 (오류 개수 계산)
+    onValue(ref(db, 'config'), (snapshot) => {
+      const c = snapshot.val() || {};
+      suppressConfigWrite = true;
+      if (document.activeElement.id !== 'r1-answer') document.getElementById('r1-answer').value = c.round1Answer || '';
+      if (document.activeElement.id !== 'r1-min') document.getElementById('r1-min').value = (c.round1Minutes ?? 1);
+      if (document.activeElement.id !== 'r1-sec') document.getElementById('r1-sec').value = (c.round1Seconds ?? 0);
+      if (document.activeElement.id !== 'r2-answer') document.getElementById('r2-answer').value = c.round2Answer || '';
+      if (document.activeElement.id !== 'r2-min') document.getElementById('r2-min').value = (c.round2Minutes ?? 1);
+      if (document.activeElement.id !== 'r2-sec') document.getElementById('r2-sec').value = (c.round2Seconds ?? 0);
+      suppressConfigWrite = false;
+    });
+
+    // ---------- 라운드 시작/종료 ----------
+    window.startRound = function (roundNum) {
+      const answer = document.getElementById(`r${roundNum}-answer`).value.trim();
+      const min = parseInt(document.getElementById(`r${roundNum}-min`).value) || 0;
+      const sec = parseInt(document.getElementById(`r${roundNum}-sec`).value) || 0;
+      const totalSec = min * 60 + sec;
+      if (!answer) { alert("정답을 입력하세요."); return; }
+      if (totalSec <= 0) { alert("제한시간을 올바르게 입력하세요."); return; }
+
+      set(ref(db, `submissions/round${roundNum}`), null).then(() => {
+        const updates = {
+          currentRound: roundNum,
+          isRoundActive: true,
+          answerLength: answer.length,
+          endTime: Date.now() + totalSec * 1000,
+          finalDone: false,
+        };
+        updates[`round${roundNum}Done`] = false;
+        update(ref(db, 'quizState'), updates);
+      });
+      alert(`${roundNum}라운드 시작! 학생들 화면에 빈칸이 열렸습니다.`);
+    };
+
+    window.endRound = function (roundNum) {
+      const answer = document.getElementById(`r${roundNum}-answer`).value.trim();
+      if (!answer) { alert(`${roundNum}라운드 정답이 입력되어 있지 않습니다.`); return; }
+
+      get(ref(db, `submissions/round${roundNum}`)).then((snap) => {
+        const subs = snap.val() || {};
+        const ranking = [];
+        for (const id in subs) {
+          const errors = getErrorCount(answer, subs[id].answer);
+          ranking.push({
+            id,
+            errors,
+            correct: Math.max(0, answer.length - errors),
+            timestamp: subs[id].timestamp || 0
+          });
+        }
+        ranking.sort((a, b) => a.errors === b.errors ? a.timestamp - b.timestamp : a.errors - b.errors);
+
+        const updates = {};
+        updates[`results/round${roundNum}`] = { answerLength: answer.length, ranking };
+        updates['quizState/isRoundActive'] = false;
+        updates[`quizState/round${roundNum}Done`] = true;
+
+        update(ref(db), updates).then(() => {
+          renderResultBoard(`${roundNum}라운드 결과`, ranking, answer.length);
+          if (roundNum === 2) {
+            computeFinal(subs, ranking, answer.length);
+          }
+        });
+      });
+      alert(`${roundNum}라운드가 종료되었습니다.`);
+    };
+
+    function computeFinal(round2Subs, round2Ranking, round2Length) {
+      get(ref(db, 'results/round1')).then((r1snap) => {
+        const r1 = r1snap.val() || { answerLength: 0, ranking: [] };
+        const r1Map = {};
+        r1.ranking.forEach(r => { r1Map[r.id] = r.errors; });
+        const r2Map = {};
+        round2Ranking.forEach(r => { r2Map[r.id] = r.errors; });
+
+        const allIds = new Set([...Object.keys(r1Map), ...Object.keys(r2Map)]);
+        const finalArr = [];
+        allIds.forEach(id => {
+          const e1 = r1Map[id] !== undefined ? r1Map[id] : r1.answerLength;
+          const e2 = r2Map[id] !== undefined ? r2Map[id] : round2Length;
+          const totalErrors = e1 + e2;
+          const totalCorrect = Math.max(0, r1.answerLength - e1) + Math.max(0, round2Length - e2);
+          const ts = (round2Subs[id] && round2Subs[id].timestamp) || 0;
+          finalArr.push({ id, round1Errors: e1, round2Errors: e2, totalErrors, totalCorrect, timestamp: ts });
+        });
+        finalArr.sort((a, b) => a.totalErrors === b.totalErrors ? a.timestamp - b.timestamp : a.totalErrors - b.totalErrors);
+
+        update(ref(db), {
+          'results/final': { ranking: finalArr },
+          'quizState/finalDone': true
+        }).then(() => {
+          renderFinalResultBoard(finalArr);
+        });
+      });
+    }
+
+    // ---------- 결과 렌더링 (관리자 화면) ----------
+    function renderResultBoard(title, ranking, totalLen) {
+      document.getElementById('result-board').style.display = 'block';
+      document.getElementById('result-title').innerText = '📣 ' + title;
+      let html = '';
+      ranking.forEach((r, idx) => {
+        html += `<li>${idx + 1}등. ${escapeHtml(r.id)} — 맞은 글자 ${r.correct}/${totalLen}</li>`;
+      });
+      document.getElementById('result-list').innerHTML = html || '<li>제출한 학생이 없습니다.</li>';
+    }
+
+    function renderFinalResultBoard(finalArr) {
+      document.getElementById('result-board').style.display = 'block';
+      document.getElementById('result-title').innerText = '🏆 최종 결과 (1+2라운드 합산)';
+      let html = '';
+      finalArr.forEach((r, idx) => {
+        html += `<li>${idx + 1}등. ${escapeHtml(r.id)} — 총 맞은 글자 ${r.totalCorrect}개 (1R 오류 ${r.round1Errors} / 2R 오류 ${r.round2Errors})</li>`;
+      });
+      document.getElementById('result-list').innerHTML = html || '<li>제출한 학생이 없습니다.</li>';
+    }
+
+    onValue(ref(db, 'results'), (snap) => {
+      const r = snap.val() || {};
+      if (r.final) {
+        renderFinalResultBoard(r.final.ranking);
+      } else if (r.round1 && !r.round2) {
+        renderResultBoard('1라운드 결과', r.round1.ranking, r.round1.answerLength);
+      }
+    });
+
+    // ---------- 실시간 제출 현황 (현재 라운드 기준) ----------
+    let latestCurrentRound = 1;
+    onValue(ref(db, 'quizState'), (snap) => {
+      const s = snap.val() || {};
+      latestCurrentRound = s.currentRound || 1;
+      document.getElementById('current-round-label').innerText = s.isRoundActive
+        ? `${latestCurrentRound}라운드 진행 중`
+        : (s.finalDone ? '종료 (최종 결과 발표됨)' : `${latestCurrentRound}라운드 대기`);
+    });
+
+    onValue(ref(db, 'submissions'), (snap) => {
+      const all = snap.val() || {};
+      const subs = all[`round${latestCurrentRound}`] || {};
+      let html = '';
+      for (const id in subs) {
+        html += `<li>${escapeHtml(id)} : ${escapeHtml(subs[id].answer)} <span style="color:#94a3b8; font-weight:400;">(${subs[id].answer.length}자 제출완료)</span></li>`;
+      }
+      document.getElementById('student-status').innerHTML = html;
+      document.getElementById('submit-count').innerText = `(제출 ${Object.keys(subs).length}명)`;
+    });
+
+    // ---------- 레벤슈타인 거리 알고리즘 ----------
     function getErrorCount(correct, submitted) {
+      submitted = submitted || '';
       const matrix = [];
       for (let i = 0; i <= submitted.length; i++) matrix[i] = [i];
       for (let j = 0; j <= correct.length; j++) matrix[0][j] = j;
@@ -196,34 +396,24 @@
       return matrix[submitted.length][correct.length];
     }
 
-    // 3. 채점 확인
-    window.checkAnswers = function () {
-      if (!currentAnswer) { alert("먼저 라운드를 시작해서 정답을 등록하세요."); return; }
-      let html = '';
-      for (let id in studentData) {
-        let errors = getErrorCount(currentAnswer, studentData[id].answer);
-        update(ref(db, `submissions/${id}`), { totalErrors: errors });
-
-        let resultTxt = errors === 0
-          ? "<span style='color:#4ade80;'>정답!</span>"
-          : `<span style='color:#f87171;'>${errors}글자 오류</span>`;
-        html += `<li>${escapeHtml(id)} : ${escapeHtml(studentData[id].answer)} → ${resultTxt}</li>`;
-      }
-      document.getElementById('student-status').innerHTML = html;
+    // ---------- 초기화 ----------
+    window.resetAll = function () {
+      if (!confirm('문제(정답/시간)와 모든 학생 기록을 전부 초기화합니다. 계속할까요?')) return;
+      set(ref(db, 'config'), null);
+      set(ref(db, 'quizState'), null);
+      set(ref(db, 'submissions'), null);
+      set(ref(db, 'results'), null);
+      document.getElementById('result-board').style.display = 'none';
+      alert('전체 초기화 완료.');
     };
 
-    // 4. 최종 명예의 전당 발표
-    window.publishFinalRanking = function () {
-      let arr = [];
-      for (let id in studentData) {
-        arr.push({
-          id: id,
-          totalErrors: studentData[id].totalErrors ?? 0,
-          timestamp: studentData[id].timestamp || 0
-        });
-      }
-      arr.sort((a, b) => a.totalErrors === b.totalErrors ? a.timestamp - b.timestamp : a.totalErrors - b.totalErrors);
-      update(ref(db, 'quizState'), { finalRanking: arr.slice(0, 10), isRoundActive: false });
+    window.resetRecordsOnly = function () {
+      if (!confirm('정답/시간 설정은 유지하고, 학생 제출 기록과 결과만 초기화합니다. 계속할까요?')) return;
+      set(ref(db, 'quizState'), null);
+      set(ref(db, 'submissions'), null);
+      set(ref(db, 'results'), null);
+      document.getElementById('result-board').style.display = 'none';
+      alert('학생 기록 초기화 완료. (정답/시간 설정은 그대로 유지됩니다)');
     };
   </script>
 </body>
