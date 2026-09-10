@@ -472,22 +472,30 @@
       }
     });
 
-    // 글자 수에 따라 빈칸 크기를 자동으로 줄여서, 타이머 등 다른 요소가 화면 밖으로 잘리지 않도록 함
+    // 글자 수에 따라 빈칸 크기를 조절하되, 기본적으로 "역사 놀토" 제목 글자 크기에 맞춤
     function sizeBoxes(length) {
       if (!length) return;
+      const titleEl = document.querySelector('.chalk-title');
+      const titleFontPx = parseFloat(getComputedStyle(titleEl).fontSize) || 40;
+
       const mainEl = document.getElementById('main-container');
       const styles = getComputedStyle(mainEl);
       const availableWidth = mainEl.clientWidth
-        - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight)
-        - 16; // 여유분
+        - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) - 16;
 
-      const maxBoxW = 92, minBoxW = 24;
-      const gap = length > 14 ? 6 : (length > 8 ? 10 : 14);
-      let boxW = (availableWidth - gap * (length - 1)) / length;
-      boxW = Math.max(minBoxW, Math.min(maxBoxW, boxW));
+      const gap = Math.max(6, titleFontPx * 0.22);
+      let boxW = titleFontPx * 1.3; // 목표 크기: 제목 글자 크기 기준
 
-      const boxH = boxW * 1.22;
-      const boxFont = Math.max(14, boxW * 0.55);
+      // 한 줄에 다 들어가지 않으면 필요한 만큼만 줄이고, 그래도 안 되면 다음 줄로 넘어가게 둠(잘리지 않음)
+      const totalNeeded = boxW * length + gap * (length - 1);
+      if (totalNeeded > availableWidth) {
+        const shrinkFactor = Math.max(0.55, availableWidth / totalNeeded);
+        boxW = boxW * shrinkFactor;
+      }
+      boxW = Math.max(32, boxW);
+
+      const boxH = boxW * 1.25;
+      const boxFont = boxW * 0.62;
 
       const root = document.documentElement.style;
       root.setProperty('--box-w', boxW + 'px');
