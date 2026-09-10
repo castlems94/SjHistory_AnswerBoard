@@ -251,6 +251,34 @@
     font-weight: 400;
   }
 
+  /* 채점 후 맞은 개수 배너 */
+  #final-count-banner {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1500;
+    background: linear-gradient(160deg, var(--board-green-1), var(--board-green-2));
+    border: 4px solid var(--chalk-yellow);
+    border-radius: 18px;
+    padding: clamp(18px, 3vh, 32px) clamp(30px, 6vw, 64px);
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    font-family: 'GangwonEduModu', sans-serif;
+    font-weight: 700;
+  }
+  #final-count-banner .banner-label {
+    font-size: clamp(16px, 2.4vw, 24px);
+    color: var(--chalk-yellow);
+    margin-bottom: 6px;
+  }
+  #final-count-banner #final-count-value {
+    font-size: clamp(38px, 7vw, 72px);
+    color: var(--chalk-white);
+    text-shadow: 0 0 12px rgba(244,242,233,0.5);
+  }
+
   /* 입장 화면 */
   #name-entry-screen { z-index: 2000; }
   #name-input {
@@ -296,6 +324,11 @@
 
       <div class="creator-credit">Created by 조성주 T</div>
     </div>
+  </div>
+
+  <div id="final-count-banner">
+    <div class="banner-label">맞은 개수</div>
+    <div id="final-count-value">0 / 0</div>
   </div>
 
   <div id="round-result-overlay" class="fullscreen-overlay">
@@ -434,6 +467,7 @@
         sizeBoxes(totalLen);
 
         document.getElementById('timer').innerText = `${roundNum}라운드 채점 중...`;
+        document.getElementById('final-count-banner').style.display = 'none';
 
         let correctCount = 0;
         for (let i = 0; i < totalLen; i++) {
@@ -450,7 +484,9 @@
           }
           document.getElementById('timer').innerText = `채점 중... (${correctCount}개 맞음)`;
         }
-        document.getElementById('timer').innerText = `✅ 맞은 개수: ${correctCount} / ${totalLen}`;
+        document.getElementById('timer').innerText = `${roundNum}라운드 채점 완료`;
+        document.getElementById('final-count-value').innerText = `${correctCount} / ${totalLen}`;
+        document.getElementById('final-count-banner').style.display = 'block';
       } catch (err) {
         console.error('채점 애니메이션 오류:', err);
       }
@@ -475,6 +511,7 @@
         lastRoundKey = null;
         hasCheckedRound1 = false;
         hasCheckedRound2 = false;
+        document.getElementById('final-count-banner').style.display = 'none';
         return;
       }
 
@@ -485,7 +522,10 @@
         if (!hasCheckedRound2) {
           hasCheckedRound2 = true;
           runRoundCheck(2).then(() => {
-            setTimeout(() => showOverlay('final-result-overlay'), 1500);
+            setTimeout(() => {
+              document.getElementById('final-count-banner').style.display = 'none';
+              showOverlay('final-result-overlay');
+            }, 1800);
           });
         } else {
           showOverlay('final-result-overlay');
@@ -502,7 +542,10 @@
         if (!hasCheckedRound1) {
           hasCheckedRound1 = true;
           runRoundCheck(1).then(() => {
-            setTimeout(() => showOverlay('round-result-overlay'), 1500);
+            setTimeout(() => {
+              document.getElementById('final-count-banner').style.display = 'none';
+              showOverlay('round-result-overlay');
+            }, 1800);
           });
         } else {
           showOverlay('round-result-overlay');
@@ -529,6 +572,7 @@
         document.getElementById('hidden-input').value = '';
         document.getElementById('submit-status').innerText = '';
         document.getElementById('edit-btn').style.display = 'none';
+        document.getElementById('final-count-banner').style.display = 'none';
         hasSubmittedThisRound = false;
       }
 
