@@ -277,6 +277,7 @@
       </div>
 
       <button id="submit-btn" onclick="submitAnswer(event)" style="display:none;">정답 제출</button>
+      <button id="edit-btn" onclick="enableEdit(event)" style="display:none;">✏ 수정하기</button>
       <div id="submit-status"></div>
 
       <div class="creator-credit">Created by 조성주 T</div>
@@ -400,6 +401,7 @@
         hi.disabled = true;
         hi.value = '';
         document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('edit-btn').style.display = 'none';
         document.getElementById('submit-status').innerText = '';
         currentAnswerLength = 0;
         lastRoundKey = null;
@@ -442,6 +444,7 @@
         }
         document.getElementById('hidden-input').value = '';
         document.getElementById('submit-status').innerText = '';
+        document.getElementById('edit-btn').style.display = 'none';
         hasSubmittedThisRound = false;
       }
 
@@ -449,10 +452,19 @@
 
       const hiddenInput = document.getElementById('hidden-input');
       const submitBtn = document.getElementById('submit-btn');
+      const editBtn = document.getElementById('edit-btn');
 
       if (state.isRoundActive) {
-        hiddenInput.disabled = false;
-        submitBtn.style.display = 'inline-block';
+        // 이미 이번 라운드에 제출을 완료한 상태라면(제출 후 새로고침 등) 잠금 상태를 유지
+        if (hasSubmittedThisRound) {
+          hiddenInput.disabled = true;
+          submitBtn.style.display = 'none';
+          editBtn.style.display = 'inline-block';
+        } else {
+          hiddenInput.disabled = false;
+          submitBtn.style.display = 'inline-block';
+          editBtn.style.display = 'none';
+        }
 
         clearInterval(localTimerInterval);
         localTimerInterval = setInterval(() => {
@@ -462,40 +474,42 @@
             clearInterval(localTimerInterval);
             hiddenInput.disabled = true;
             submitBtn.style.display = 'none';
+            editBtn.style.display = 'none';
           }
         }, 100);
       } else {
         clearInterval(localTimerInterval);
         hiddenInput.disabled = true;
         submitBtn.style.display = 'none';
+        editBtn.style.display = 'none';
         document.getElementById('timer').innerText = "선생님의 시작을 기다리는 중...";
       }
     });
 
-    // 글자 수에 따라 빈칸 크기를 조절하되, 기본적으로 "역사 놀토" 제목 글자 크기에 맞춤
+    // 입력 박스 크기: 칠판의 세로 공간을 넉넉히 사용해 크게 표시 (화면의 약 2/3 수준)
     function sizeBoxes(length) {
       if (!length) return;
-      const titleEl = document.querySelector('.chalk-title');
-      const titleFontPx = parseFloat(getComputedStyle(titleEl).fontSize) || 40;
-
       const mainEl = document.getElementById('main-container');
       const styles = getComputedStyle(mainEl);
       const availableWidth = mainEl.clientWidth
         - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) - 16;
+      const availableHeight = mainEl.clientHeight
+        - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
 
-      const gap = Math.max(6, titleFontPx * 0.22);
-      let boxW = titleFontPx * 1.3; // 목표 크기: 제목 글자 크기 기준
+      let boxH = availableHeight * 0.42;
+      boxH = Math.max(60, Math.min(260, boxH));
+      let boxW = boxH / 1.25;
 
-      // 한 줄에 다 들어가지 않으면 필요한 만큼만 줄이고, 그래도 안 되면 다음 줄로 넘어가게 둠(잘리지 않음)
+      const gap = Math.max(8, boxH * 0.14);
       const totalNeeded = boxW * length + gap * (length - 1);
       if (totalNeeded > availableWidth) {
-        const shrinkFactor = Math.max(0.55, availableWidth / totalNeeded);
+        const shrinkFactor = Math.max(0.4, availableWidth / totalNeeded);
         boxW = boxW * shrinkFactor;
+        boxH = boxW * 1.25;
       }
-      boxW = Math.max(32, boxW);
+      boxW = Math.max(36, boxW);
 
-      const boxH = boxW * 1.25;
-      const boxFont = boxW * 0.62;
+      const boxFont = boxW * 0.6;
 
       const root = document.documentElement.style;
       root.setProperty('--box-w', boxW + 'px');
@@ -511,18 +525,23 @@
     let isComposing = false;
     const hiddenInputEl = document.getElementById('hidden-input');
 
+    function renderBoxesFromText(text) {
+      const shown = text.slice(0, currentAnswerLength);
+      for (let i = 0; i < currentAnswerLength; i++) {
+        const box = document.getElementById(`box-${i}`);
+        if (box) {
+          box.innerText = shown[i] || '';
+          if (i === shown.length) box.classList.add('active');
+          else box.classList.remove('active');
+        }
+      }
+    }
+
     function processTyping(target) {
       let text = target.value.replace(/[^0-9a-zA-Z ㄱ-ㅎㅏ-ㅣ가-힣]/g, '');
       if (text.length > currentAnswerLength) text = text.substring(0, currentAnswerLength);
       target.value = text;
-      for (let i = 0; i < currentAnswerLength; i++) {
-        const box = document.getElementById(`box-${i}`);
-        if (box) {
-          box.innerText = text[i] || '';
-          if (i === text.length) box.classList.add('active');
-          else box.classList.remove('active');
-        }
-      }
+      renderBoxesFromText(text);
       if (hasSubmittedThisRound) {
         document.getElementById('submit-status').innerText = '내용이 수정되었습니다. 다시 "정답 제출"을 눌러주세요.';
       }
@@ -534,7 +553,11 @@
       processTyping(e.target);
     });
     hiddenInputEl.addEventListener('input', (e) => {
-      if (isComposing) return; // 한글 조합 중에는 건너뛰고 compositionend에서 처리
+      if (isComposing) {
+        // 한글 조합 중: 값은 건드리지 않고 화면 표시만 실시간으로 갱신 (조합 깨짐 방지)
+        renderBoxesFromText(e.target.value);
+        return;
+      }
       processTyping(e.target);
     });
 
@@ -546,13 +569,24 @@
         return;
       }
       const text = document.getElementById('hidden-input').value;
-      if (text.length < currentAnswerLength) {
-        alert("빈칸을 모두 채워주세요!");
-        return;
-      }
       set(ref(db, `submissions/round${currentRoundNum}/` + studentId), { answer: text, timestamp: Date.now() });
       hasSubmittedThisRound = true;
-      document.getElementById('submit-status').innerText = '✔ 제출 완료! (라운드가 끝나기 전까지는 다시 입력해서 수정할 수 있어요)';
+
+      const hi = document.getElementById('hidden-input');
+      hi.disabled = true;
+      document.getElementById('submit-btn').style.display = 'none';
+      document.getElementById('edit-btn').style.display = 'inline-block';
+      document.getElementById('submit-status').innerText = '✔ 제출 완료! (수정하려면 "수정하기"를 눌러주세요)';
+    };
+
+    window.enableEdit = function (e) {
+      if (e) e.stopPropagation();
+      const hi = document.getElementById('hidden-input');
+      hi.disabled = false;
+      hi.focus();
+      document.getElementById('edit-btn').style.display = 'none';
+      document.getElementById('submit-btn').style.display = 'inline-block';
+      document.getElementById('submit-status').innerText = '수정 중입니다. 다 고치면 "정답 제출"을 다시 눌러주세요.';
     };
   </script>
 </body>
