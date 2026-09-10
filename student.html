@@ -486,29 +486,48 @@
       }
     });
 
-    // 입력 박스 크기: 칠판의 세로 공간을 넉넉히 사용해 크게 표시 (화면의 약 2/3 수준)
+    // 입력 박스 크기: 화면(칠판)에 스크롤 없이 다 들어가도록, 필요한 경우에만 비율 유지하며 축소
     function sizeBoxes(length) {
       if (!length) return;
       const mainEl = document.getElementById('main-container');
       const styles = getComputedStyle(mainEl);
       const availableWidth = mainEl.clientWidth
         - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) - 16;
-      const availableHeight = mainEl.clientHeight
+      const totalAvailableHeight = mainEl.clientHeight
         - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
 
-      let boxH = availableHeight * 0.42 + 38; // 비율은 유지하면서 약 1cm(≈38px)만큼 더 크게
-      boxH = Math.max(70, Math.min(300, boxH));
+      // 박스 영역을 제외한 다른 요소(제목/이름/타이머/버튼/상태문구 등)가 차지하는 높이를 실측
+      const titleEl = document.querySelector('.chalk-title');
+      const infoEl = document.getElementById('student-info');
+      const timerEl = document.getElementById('timer');
+      const submitBtn = document.getElementById('submit-btn');
+      const editBtn = document.getElementById('edit-btn');
+      const statusEl = document.getElementById('submit-status');
+      const btnHeight = Math.max(submitBtn.offsetHeight, editBtn.offsetHeight, 44);
+      const marginsBuffer = 70; // 요소 사이 여백 대략치
+
+      const usedByOthers = titleEl.offsetHeight + infoEl.offsetHeight + timerEl.offsetHeight
+        + btnHeight + (statusEl.offsetHeight || 18) + marginsBuffer;
+      const boxAreaHeight = Math.max(90, totalAvailableHeight - usedByOthers);
+
+      let boxH = boxAreaHeight + 38; // 비율 유지 + 요청하신 여유분(약 1cm)
       let boxW = boxH / 1.25;
+      const gapRatio = 0.05; // 간격을 좁게
+      let gap = Math.max(4, boxH * gapRatio);
 
-      const gap = Math.max(8, boxH * 0.14);
-      const totalNeeded = boxW * length + gap * (length - 1);
-      if (totalNeeded > availableWidth) {
-        const shrinkFactor = Math.max(0.4, availableWidth / totalNeeded);
-        boxW = boxW * shrinkFactor;
+      // 여러 줄로 배치되어도 세로 스크롤이 생기지 않도록, 필요한 만큼만 비율 유지하며 반복 축소
+      for (let i = 0; i < 14; i++) {
+        const perRow = Math.max(1, Math.floor((availableWidth + gap) / (boxW + gap)));
+        const rows = Math.ceil(length / perRow);
+        const totalHeight = rows * boxH + (rows - 1) * gap;
+        if (totalHeight <= boxAreaHeight || boxW <= 28) break;
+        const scale = Math.sqrt(boxAreaHeight / totalHeight);
+        boxW *= scale;
         boxH = boxW * 1.25;
+        gap = Math.max(4, boxH * gapRatio);
       }
-      boxW = Math.max(36, boxW);
-
+      boxW = Math.max(26, boxW);
+      boxH = boxW * 1.25;
       const boxFont = boxW * 0.6;
 
       const root = document.documentElement.style;
