@@ -148,6 +148,20 @@
     background-color: rgba(244,227,161,0.08);
     animation: blink-cursor 1s infinite;
   }
+  .answer-box.correct {
+    border-style: solid;
+    border-color: #4ade80;
+    background-color: rgba(74,222,128,0.15);
+    color: #4ade80;
+    text-shadow: 0 0 8px rgba(74,222,128,0.6);
+  }
+  .answer-box.wrong {
+    border-style: solid;
+    border-color: #f87171;
+    background-color: rgba(248,113,113,0.15);
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(248,113,113,0.6);
+  }
   @keyframes blink-cursor {
     0%, 100% { box-shadow: 0 0 0 rgba(244,227,161,0); }
     50% { box-shadow: 0 0 12px rgba(244,227,161,0.5); }
@@ -303,7 +317,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBakDXeQGKrR3SdK-rXIOkMs_gl70uKmm4",
@@ -388,6 +402,60 @@
       document.getElementById(id).style.display = 'none';
     }
 
+    // ---------- 라운드 종료 시: 학생 본인 답안을 칸별로 O/X 채점하는 애니메이션 ----------
+    let hasCheckedRound1 = false;
+    let hasCheckedRound2 = false;
+
+    async function runRoundCheck(roundNum) {
+      try {
+        const [subSnap, detailSnap, lenSnap] = await Promise.all([
+          get(ref(db, `submissions/round${roundNum}/${studentId}`)),
+          get(ref(db, `results/round${roundNum}/detail/${studentId}`)),
+          get(ref(db, `results/round${roundNum}/answerLength`)),
+        ]);
+
+        if (!detailSnap.exists()) return; // 제출을 안 한 학생은 채점 애니메이션 생략
+
+        const submittedText = subSnap.exists() ? (subSnap.val().answer || '') : '';
+        const marks = detailSnap.val();
+        const totalLen = lenSnap.exists() ? lenSnap.val() : marks.length;
+
+        clearInterval(localTimerInterval);
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('edit-btn').style.display = 'none';
+        document.getElementById('submit-status').innerText = '';
+
+        // 제출했던 답안 그대로 박스에 다시 표시한 뒤 채점 시작
+        const container = document.getElementById('boxes-container');
+        container.innerHTML = '';
+        for (let i = 0; i < totalLen; i++) {
+          container.innerHTML += `<div class="answer-box" id="box-${i}">${escapeHtml(submittedText[i] || '')}</div>`;
+        }
+        sizeBoxes(totalLen);
+
+        document.getElementById('timer').innerText = `${roundNum}라운드 채점 중...`;
+
+        let correctCount = 0;
+        for (let i = 0; i < totalLen; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+          const box = document.getElementById(`box-${i}`);
+          if (!box) continue;
+          if (marks[i]) {
+            box.classList.add('correct');
+            box.innerText = 'O';
+            correctCount++;
+          } else {
+            box.classList.add('wrong');
+            box.innerText = 'X';
+          }
+          document.getElementById('timer').innerText = `채점 중... (${correctCount}개 맞음)`;
+        }
+        document.getElementById('timer').innerText = `✅ 맞은 개수: ${correctCount} / ${totalLen}`;
+      } catch (err) {
+        console.error('채점 애니메이션 오류:', err);
+      }
+    }
+
     // ---------- 퀴즈 상태 ----------
     onValue(ref(db, 'quizState'), (snapshot) => {
       const state = snapshot.val();
@@ -405,14 +473,23 @@
         document.getElementById('submit-status').innerText = '';
         currentAnswerLength = 0;
         lastRoundKey = null;
+        hasCheckedRound1 = false;
+        hasCheckedRound2 = false;
         return;
       }
 
       // 최종 결과 화면 (최우선)
       if (state.finalDone) {
         hideOverlay('round-result-overlay');
-        showOverlay('final-result-overlay');
         clearInterval(localTimerInterval);
+        if (!hasCheckedRound2) {
+          hasCheckedRound2 = true;
+          runRoundCheck(2).then(() => {
+            setTimeout(() => showOverlay('final-result-overlay'), 1500);
+          });
+        } else {
+          showOverlay('final-result-overlay');
+        }
         return;
       } else {
         hideOverlay('final-result-overlay');
@@ -421,8 +498,15 @@
       // 1라운드 결과 화면 (1라운드가 끝나고, 아직 2라운드가 시작 전일 때)
       if (state.round1Done && state.currentRound === 1 && !state.isRoundActive) {
         document.getElementById('round-result-title').innerText = '🥇 1라운드 결과 🥇';
-        showOverlay('round-result-overlay');
         clearInterval(localTimerInterval);
+        if (!hasCheckedRound1) {
+          hasCheckedRound1 = true;
+          runRoundCheck(1).then(() => {
+            setTimeout(() => showOverlay('round-result-overlay'), 1500);
+          });
+        } else {
+          showOverlay('round-result-overlay');
+        }
         return;
       } else {
         hideOverlay('round-result-overlay');
@@ -448,7 +532,11 @@
         hasSubmittedThisRound = false;
       }
 
-      if (isNewRound) lastRoundKey = roundKey;
+      if (isNewRound) {
+        lastRoundKey = roundKey;
+        hasCheckedRound1 = false;
+        hasCheckedRound2 = false;
+      }
 
       const hiddenInput = document.getElementById('hidden-input');
       const submitBtn = document.getElementById('submit-btn');

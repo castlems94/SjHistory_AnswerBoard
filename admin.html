@@ -272,19 +272,21 @@
       get(ref(db, `submissions/round${roundNum}`)).then((snap) => {
         const subs = snap.val() || {};
         const ranking = [];
+        const detail = {};
         for (const id in subs) {
-          const errors = getErrorCount(answer, subs[id].answer);
+          const { marks, correctCount, errors } = getPositionalResult(answer, subs[id].answer);
+          detail[id] = marks;
           ranking.push({
             id,
             errors,
-            correct: Math.max(0, answer.length - errors),
+            correct: correctCount,
             timestamp: subs[id].timestamp || 0
           });
         }
         ranking.sort((a, b) => a.errors === b.errors ? a.timestamp - b.timestamp : a.errors - b.errors);
 
         const updates = {};
-        updates[`results/round${roundNum}`] = { answerLength: answer.length, ranking };
+        updates[`results/round${roundNum}`] = { answerLength: answer.length, ranking, detail };
         updates['quizState/isRoundActive'] = false;
         updates[`quizState/round${roundNum}Done`] = true;
 
@@ -378,22 +380,17 @@
       document.getElementById('submit-count').innerText = `(제출 ${Object.keys(subs).length}명)`;
     });
 
-    // ---------- 레벤슈타인 거리 알고리즘 ----------
-    function getErrorCount(correct, submitted) {
+    // ---------- 칸별(위치 기준) 채점: O/X 애니메이션과 정확히 맞물리도록 위치 비교 방식 사용 ----------
+    function getPositionalResult(correct, submitted) {
       submitted = submitted || '';
-      const matrix = [];
-      for (let i = 0; i <= submitted.length; i++) matrix[i] = [i];
-      for (let j = 0; j <= correct.length; j++) matrix[0][j] = j;
-      for (let i = 1; i <= submitted.length; i++) {
-        for (let j = 1; j <= correct.length; j++) {
-          if (submitted.charAt(i - 1) === correct.charAt(j - 1)) {
-            matrix[i][j] = matrix[i - 1][j - 1];
-          } else {
-            matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
-          }
-        }
+      const marks = [];
+      let correctCount = 0;
+      for (let i = 0; i < correct.length; i++) {
+        const ok = submitted[i] !== undefined && submitted[i] === correct[i];
+        marks.push(ok);
+        if (ok) correctCount++;
       }
-      return matrix[submitted.length][correct.length];
+      return { marks, correctCount, errors: correct.length - correctCount };
     }
 
     // ---------- 초기화 ----------
