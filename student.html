@@ -436,12 +436,12 @@
 
       if (state.answerLength && (isNewRound || currentAnswerLength !== state.answerLength)) {
         currentAnswerLength = state.answerLength;
-        sizeBoxes(currentAnswerLength);
         const container = document.getElementById('boxes-container');
         container.innerHTML = '';
         for (let i = 0; i < currentAnswerLength; i++) {
           container.innerHTML += `<div class="answer-box" id="box-${i}"></div>`;
         }
+        sizeBoxes(currentAnswerLength);
         document.getElementById('hidden-input').value = '';
         document.getElementById('submit-status').innerText = '';
         document.getElementById('edit-btn').style.display = 'none';
@@ -486,55 +486,34 @@
       }
     });
 
-    // 입력 박스 크기: 화면(칠판)에 스크롤 없이 다 들어가도록, 필요한 경우에만 비율 유지하며 축소
+    // 입력 박스 크기: 실제로 렌더링해본 뒤, 화면을 넘치는 만큼만 비율을 유지하며 자동 축소 (스크롤 방지)
     function sizeBoxes(length) {
       if (!length) return;
       const mainEl = document.getElementById('main-container');
-      const styles = getComputedStyle(mainEl);
-      const availableWidth = mainEl.clientWidth
-        - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight) - 16;
-      const totalAvailableHeight = mainEl.clientHeight
-        - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
-
-      // 박스 영역을 제외한 다른 요소(제목/이름/타이머/버튼/상태문구 등)가 차지하는 높이를 실측
-      const titleEl = document.querySelector('.chalk-title');
-      const infoEl = document.getElementById('student-info');
-      const timerEl = document.getElementById('timer');
-      const submitBtn = document.getElementById('submit-btn');
-      const editBtn = document.getElementById('edit-btn');
-      const statusEl = document.getElementById('submit-status');
-      const btnHeight = Math.max(submitBtn.offsetHeight, editBtn.offsetHeight, 44);
-      const marginsBuffer = 70; // 요소 사이 여백 대략치
-
-      const usedByOthers = titleEl.offsetHeight + infoEl.offsetHeight + timerEl.offsetHeight
-        + btnHeight + (statusEl.offsetHeight || 18) + marginsBuffer;
-      const boxAreaHeight = Math.max(90, totalAvailableHeight - usedByOthers);
-
-      let boxH = boxAreaHeight + 38; // 비율 유지 + 요청하신 여유분(약 1cm)
-      let boxW = boxH / 1.25;
-      const gapRatio = 0.05; // 간격을 좁게
-      let gap = Math.max(4, boxH * gapRatio);
-
-      // 여러 줄로 배치되어도 세로 스크롤이 생기지 않도록, 필요한 만큼만 비율 유지하며 반복 축소
-      for (let i = 0; i < 14; i++) {
-        const perRow = Math.max(1, Math.floor((availableWidth + gap) / (boxW + gap)));
-        const rows = Math.ceil(length / perRow);
-        const totalHeight = rows * boxH + (rows - 1) * gap;
-        if (totalHeight <= boxAreaHeight || boxW <= 28) break;
-        const scale = Math.sqrt(boxAreaHeight / totalHeight);
-        boxW *= scale;
-        boxH = boxW * 1.25;
-        gap = Math.max(4, boxH * gapRatio);
-      }
-      boxW = Math.max(26, boxW);
-      boxH = boxW * 1.25;
-      const boxFont = boxW * 0.6;
-
       const root = document.documentElement.style;
-      root.setProperty('--box-w', boxW + 'px');
-      root.setProperty('--box-h', boxH + 'px');
-      root.setProperty('--box-font', boxFont + 'px');
-      root.setProperty('--box-gap', gap + 'px');
+
+      let boxW = 100;
+      let boxH = boxW * 1.25;
+      let gap = Math.max(4, boxH * 0.05);
+
+      function apply() {
+        root.setProperty('--box-w', boxW + 'px');
+        root.setProperty('--box-h', boxH + 'px');
+        root.setProperty('--box-font', (boxW * 0.6) + 'px');
+        root.setProperty('--box-gap', gap + 'px');
+      }
+      apply();
+
+      // 실제 렌더링 결과(scrollHeight)를 측정해서, 화면(clientHeight)을 넘치면 그만큼만 반복적으로 축소
+      for (let i = 0; i < 20; i++) {
+        const overflow = mainEl.scrollHeight - mainEl.clientHeight;
+        if (overflow <= 1 || boxW <= 24) break;
+        const scale = Math.sqrt(mainEl.clientHeight / mainEl.scrollHeight) * 0.98;
+        boxW = Math.max(24, boxW * scale);
+        boxH = boxW * 1.25;
+        gap = Math.max(4, boxH * 0.05);
+        apply();
+      }
     }
     window.addEventListener('resize', () => {
       if (currentAnswerLength) sizeBoxes(currentAnswerLength);
