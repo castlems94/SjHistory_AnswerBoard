@@ -496,8 +496,8 @@
       const availableHeight = mainEl.clientHeight
         - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
 
-      let boxH = availableHeight * 0.42;
-      boxH = Math.max(60, Math.min(260, boxH));
+      let boxH = availableHeight * 0.42 + 38; // 비율은 유지하면서 약 1cm(≈38px)만큼 더 크게
+      boxH = Math.max(70, Math.min(300, boxH));
       let boxW = boxH / 1.25;
 
       const gap = Math.max(8, boxH * 0.14);
