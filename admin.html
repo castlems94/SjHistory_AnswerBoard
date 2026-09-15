@@ -47,6 +47,19 @@
   }
   .banner p { margin: 4px 0 0; color: rgba(244,242,233,0.7); font-size: 14px; font-weight: 400; }
 
+  .main-layout {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+  }
+  .left-column, .right-column {
+    flex: 1 1 0;
+    min-width: 320px;
+  }
+  @media (max-width: 900px) {
+    .main-layout { flex-direction: column; }
+  }
+
   .round-panel {
     background: #1e293b;
     padding: 20px;
@@ -56,7 +69,20 @@
   }
   .round-panel.round1 { border-left-color: #22c55e; }
   .round-panel.round2 { border-left-color: #3b82f6; }
-  .round-panel h3 { font-size: 20px; margin-bottom: 14px; }
+  .round-panel h3 {
+    font-size: 20px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toggle-answer-btn {
+    background: #334155;
+    color: #cbd5e1;
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+  .answer-collapse { margin-top: 4px; }
 
   .time-row {
     display: flex;
@@ -216,8 +242,10 @@
     background: rgba(244,242,233,0.08);
     border-radius: 8px;
   }
-  #admin-round-overlay button {
-    margin-top: 26px;
+  #admin-round-overlay .fold-btn {
+    position: absolute;
+    bottom: 26px;
+    right: 30px;
     background: var(--chalk-yellow);
     color: #163a2c;
   }
@@ -229,55 +257,65 @@
     <p>두 라운드 정답을 미리 입력해두고, 라운드별 시작/종료 버튼만 눌러 진행하세요.</p>
   </div>
 
-  <div class="round-panel round1">
-    <h3>🥇 1라운드</h3>
-    <div class="time-row">
-      제한시간:
-      <input type="number" id="r1-min" value="1" min="0"> 분
-      <input type="number" id="r1-sec" value="0" min="0" max="59"> 초
-      <span class="live-timer" id="r1-live-timer"></span>
-    </div>
-    <div class="button-row">
-      <button id="r1-start-btn" onclick="startRound(1)" style="background:#22c55e;">▶ 1라운드 시작</button>
-      <button onclick="endRound(1)" style="background:#ef4444;">■ 1라운드 종료</button>
-    </div>
-    <div class="answer-input-wrap">
-      <input type="password" id="r1-answer" class="answer-input-full" placeholder="1라운드 정답 입력 (예: 조선왕조실록)">
-      <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(1)" id="r1-toggle-btn">👁 보기</button>
-    </div>
-  </div>
+  <div class="main-layout">
+    <div class="left-column">
+      <div class="round-panel round1">
+        <h3>🥇 1라운드 <button type="button" class="toggle-answer-btn" onclick="toggleAnswerPanel(1)" id="r1-arrow">▶ 정답 입력</button></h3>
+        <div class="time-row">
+          제한시간:
+          <input type="number" id="r1-min" value="1" min="0"> 분
+          <input type="number" id="r1-sec" value="0" min="0" max="59"> 초
+          <span class="live-timer" id="r1-live-timer"></span>
+        </div>
+        <div class="button-row">
+          <button id="r1-start-btn" onclick="startRound(1)" style="background:#22c55e;">▶ 1라운드 시작</button>
+          <button onclick="endRound(1)" style="background:#ef4444;">■ 1라운드 종료</button>
+        </div>
+        <div class="answer-collapse" id="r1-answer-collapse" style="display:none;">
+          <div class="answer-input-wrap">
+            <input type="password" id="r1-answer" class="answer-input-full" placeholder="1라운드 정답 입력 (예: 조선왕조실록)">
+            <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(1)" id="r1-toggle-btn">👁 보기</button>
+          </div>
+        </div>
+      </div>
 
-  <div class="round-panel round2">
-    <h3>🥈 2라운드</h3>
-    <div class="time-row">
-      제한시간:
-      <input type="number" id="r2-min" value="1" min="0"> 분
-      <input type="number" id="r2-sec" value="0" min="0" max="59"> 초
-      <span class="live-timer" id="r2-live-timer"></span>
-    </div>
-    <div class="button-row">
-      <button id="r2-start-btn" onclick="startRound(2)" style="background:#22c55e;">▶ 2라운드 시작</button>
-      <button onclick="endRound(2)" style="background:#ef4444;">■ 2라운드 종료</button>
-    </div>
-    <div class="answer-input-wrap">
-      <input type="password" id="r2-answer" class="answer-input-full" placeholder="2라운드 정답 입력 (예: 동학농민운동)">
-      <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(2)" id="r2-toggle-btn">👁 보기</button>
-    </div>
-  </div>
+      <div class="round-panel round2">
+        <h3>🥈 2라운드 <button type="button" class="toggle-answer-btn" onclick="toggleAnswerPanel(2)" id="r2-arrow">▶ 정답 입력</button></h3>
+        <div class="time-row">
+          제한시간:
+          <input type="number" id="r2-min" value="1" min="0"> 분
+          <input type="number" id="r2-sec" value="0" min="0" max="59"> 초
+          <span class="live-timer" id="r2-live-timer"></span>
+        </div>
+        <div class="button-row">
+          <button id="r2-start-btn" onclick="startRound(2)" style="background:#22c55e;">▶ 2라운드 시작</button>
+          <button onclick="endRound(2)" style="background:#ef4444;">■ 2라운드 종료</button>
+        </div>
+        <div class="answer-collapse" id="r2-answer-collapse" style="display:none;">
+          <div class="answer-input-wrap">
+            <input type="password" id="r2-answer" class="answer-input-full" placeholder="2라운드 정답 입력 (예: 동학농민운동)">
+            <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(2)" id="r2-toggle-btn">👁 보기</button>
+          </div>
+        </div>
+      </div>
 
-  <div class="reset-panel">
-    <button onclick="resetAll()" style="background:#dc2626;">🗑 전체 초기화 (문제 + 학생 기록)</button>
-    <button onclick="resetRecordsOnly()" style="background:#f59e0b;">♻ 학생 기록만 초기화 (문제 유지)</button>
-  </div>
+      <div class="reset-panel">
+        <button onclick="resetAll()" style="background:#dc2626;">🗑 전체 초기화 (문제 + 학생 기록)</button>
+        <button onclick="resetRecordsOnly()" style="background:#f59e0b;">♻ 학생 기록만 초기화 (문제 유지)</button>
+      </div>
+    </div>
 
-  <div class="board" id="result-board">
-    <h3 id="result-title">📣 라운드 결과</h3>
-    <ul id="result-list"></ul>
-  </div>
+    <div class="right-column">
+      <div class="board" id="result-board">
+        <h3 id="result-title">📣 라운드 결과</h3>
+        <ul id="result-list"></ul>
+      </div>
 
-  <div class="board">
-    <h3>📊 실시간 제출 현황 (현재: <span id="current-round-label">대기 중</span>) <span id="submit-count"></span></h3>
-    <ul id="student-status"></ul>
+      <div class="board">
+        <h3>📊 실시간 제출 현황 (현재: <span id="current-round-label">대기 중</span>) <span id="submit-count"></span></h3>
+        <ul id="student-status"></ul>
+      </div>
+    </div>
   </div>
 
   <div style="text-align:center; font-size:12px; color:#475569; margin-top: 10px; padding-bottom: 10px;">
@@ -293,7 +331,7 @@
   <div id="admin-round-overlay">
     <h1 id="admin-round-overlay-title">🥇 1라운드 결과 🥇</h1>
     <ul class="overlay-list" id="admin-round-overlay-list"></ul>
-    <button onclick="closeAdminOverlay()">닫기</button>
+    <button class="fold-btn" onclick="closeAdminOverlay()">접기</button>
   </div>
 
   <script type="module">
@@ -561,6 +599,14 @@
     }
 
     // ---------- 초기화 ----------
+    window.toggleAnswerPanel = function (roundNum) {
+      const el = document.getElementById(`r${roundNum}-answer-collapse`);
+      const arrow = document.getElementById(`r${roundNum}-arrow`);
+      const isOpen = el.style.display !== 'none';
+      el.style.display = isOpen ? 'none' : 'block';
+      arrow.innerText = isOpen ? '▶ 정답 입력' : '▼ 정답 입력';
+    };
+
     window.toggleAnswerVisibility = function (roundNum) {
       const input = document.getElementById(`r${roundNum}-answer`);
       const btn = document.getElementById(`r${roundNum}-toggle-btn`);
