@@ -222,7 +222,12 @@
     padding: clamp(6px, 1.2vh, 10px) clamp(12px, 2vw, 20px);
     font-size: clamp(12px, 1.6vw, 16px);
     z-index: 5;
+    background: #f97316;
+    border: 2px solid #fed7aa;
+    color: #1f2937;
+    box-shadow: 0 0 14px rgba(249,115,22,0.6);
   }
+  #hint-btn:hover { background-color: #fb923c; }
 
   /* 결과 화면 공통 (라운드 결과 / 최종 결과) */
   .fullscreen-overlay {
@@ -318,7 +323,7 @@
     <span class="screw tl"></span><span class="screw tr"></span>
     <span class="screw bl"></span><span class="screw br"></span>
     <div class="container" id="main-container" onclick="focusInput()">
-      <button id="hint-btn" onclick="requestHint(event)">💡 힌트</button>
+      <button id="hint-btn" onclick="requestHint(event)" style="display:none;">💡 힌트</button>
       <h1 class="chalk-title">성주쌤의 역사 놀라운 평일</h1>
       <h3 id="student-info"></h3>
       <div class="timer-box" id="timer">선생님의 시작을 기다리는 중...</div>
@@ -403,7 +408,10 @@
         alert("먼저 이름을 입력하고 입장해주세요!");
         return;
       }
+      if (hintUsedThisRound) return;
       set(ref(db, 'hintRequest'), { id: studentId, timestamp: Date.now() });
+      hintUsedThisRound = true;
+      document.getElementById('hint-btn').style.display = 'none';
       alert("선생님께 힌트를 요청했어요!");
     };
 
@@ -412,6 +420,7 @@
     let currentRoundNum = 1;
     let lastRoundKey = null;
     let hasSubmittedThisRound = false;
+    let hintUsedThisRound = false;
     let latestResults = {};
 
     window.focusInput = function () {
@@ -526,11 +535,13 @@
         hi.value = '';
         document.getElementById('submit-btn').style.display = 'none';
         document.getElementById('edit-btn').style.display = 'none';
+        document.getElementById('hint-btn').style.display = 'none';
         document.getElementById('submit-status').innerText = '';
         currentAnswerLength = 0;
         lastRoundKey = null;
         hasCheckedRound1 = false;
         hasCheckedRound2 = false;
+        hintUsedThisRound = false;
         document.getElementById('final-count-banner').style.display = 'none';
         return;
       }
@@ -538,6 +549,7 @@
       // 최종 결과 화면 (최우선)
       if (state.finalDone) {
         hideOverlay('round-result-overlay');
+        document.getElementById('hint-btn').style.display = 'none';
         clearInterval(localTimerInterval);
         if (!hasCheckedRound2) {
           hasCheckedRound2 = true;
@@ -558,6 +570,7 @@
       // 1라운드 결과 화면 (1라운드가 끝나고, 아직 2라운드가 시작 전일 때)
       if (state.round1Done && state.currentRound === 1 && !state.isRoundActive) {
         document.getElementById('round-result-title').innerText = '🥇 1라운드 결과 🥇';
+        document.getElementById('hint-btn').style.display = 'none';
         clearInterval(localTimerInterval);
         if (!hasCheckedRound1) {
           hasCheckedRound1 = true;
@@ -600,13 +613,17 @@
         lastRoundKey = roundKey;
         hasCheckedRound1 = false;
         hasCheckedRound2 = false;
+        hintUsedThisRound = false;
       }
 
       const hiddenInput = document.getElementById('hidden-input');
       const submitBtn = document.getElementById('submit-btn');
       const editBtn = document.getElementById('edit-btn');
+      const hintBtn = document.getElementById('hint-btn');
 
       if (state.isRoundActive) {
+        hintBtn.style.display = hintUsedThisRound ? 'none' : 'inline-block';
+
         // 이미 이번 라운드에 제출을 완료한 상태라면(제출 후 새로고침 등) 잠금 상태를 유지
         if (hasSubmittedThisRound) {
           hiddenInput.disabled = true;
@@ -635,9 +652,11 @@
             hiddenInput.disabled = true;
             submitBtn.style.display = 'none';
             editBtn.style.display = 'none';
+            hintBtn.style.display = 'none';
           }
         }, 100);
       } else {
+        hintBtn.style.display = 'none';
         clearInterval(localTimerInterval);
         hiddenInput.disabled = true;
         submitBtn.style.display = 'none';
