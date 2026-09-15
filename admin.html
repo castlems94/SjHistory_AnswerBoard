@@ -106,6 +106,19 @@
   }
   .answer-input-full::placeholder { color: #64748b; }
 
+  .answer-input-wrap { position: relative; }
+  .answer-input-wrap .answer-input-full { padding-right: 90px; }
+  .toggle-visibility-btn {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    padding: 8px 14px;
+    font-size: 13px;
+    background: #334155;
+    color: #e5e7eb;
+  }
+
   .reset-panel {
     display: flex;
     gap: 10px;
@@ -133,6 +146,42 @@
   #result-board { display: none; border: 2px solid var(--chalk-yellow); }
   #result-board h3 { color: var(--chalk-yellow); }
   #result-board li { background: #1e293b; }
+
+  .live-timer {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--chalk-yellow);
+    margin-left: 8px;
+  }
+
+  #hint-banner {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    background: linear-gradient(160deg, #7c2d12, #431407);
+    border: 5px solid var(--chalk-yellow);
+    border-radius: 20px;
+    padding: 30px 50px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+  #hint-banner .hint-label {
+    font-size: 22px;
+    color: var(--chalk-yellow);
+    margin-bottom: 8px;
+  }
+  #hint-banner .hint-name {
+    font-size: 40px;
+    color: white;
+    margin-bottom: 18px;
+  }
+  #hint-banner button {
+    background: var(--chalk-yellow);
+    color: #431407;
+  }
 </style>
 </head>
 <body>
@@ -147,12 +196,16 @@
       제한시간:
       <input type="number" id="r1-min" value="1" min="0"> 분
       <input type="number" id="r1-sec" value="0" min="0" max="59"> 초
+      <span class="live-timer" id="r1-live-timer"></span>
     </div>
     <div class="button-row">
       <button id="r1-start-btn" onclick="startRound(1)" style="background:#22c55e;">▶ 1라운드 시작</button>
       <button onclick="endRound(1)" style="background:#ef4444;">■ 1라운드 종료</button>
     </div>
-    <input type="text" id="r1-answer" class="answer-input-full" placeholder="1라운드 정답 입력 (예: 조선왕조실록)">
+    <div class="answer-input-wrap">
+      <input type="password" id="r1-answer" class="answer-input-full" placeholder="1라운드 정답 입력 (예: 조선왕조실록)">
+      <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(1)" id="r1-toggle-btn">👁 보기</button>
+    </div>
   </div>
 
   <div class="round-panel round2">
@@ -161,12 +214,16 @@
       제한시간:
       <input type="number" id="r2-min" value="1" min="0"> 분
       <input type="number" id="r2-sec" value="0" min="0" max="59"> 초
+      <span class="live-timer" id="r2-live-timer"></span>
     </div>
     <div class="button-row">
       <button id="r2-start-btn" onclick="startRound(2)" style="background:#22c55e;">▶ 2라운드 시작</button>
       <button onclick="endRound(2)" style="background:#ef4444;">■ 2라운드 종료</button>
     </div>
-    <input type="text" id="r2-answer" class="answer-input-full" placeholder="2라운드 정답 입력 (예: 동학농민운동)">
+    <div class="answer-input-wrap">
+      <input type="password" id="r2-answer" class="answer-input-full" placeholder="2라운드 정답 입력 (예: 동학농민운동)">
+      <button type="button" class="toggle-visibility-btn" onclick="toggleAnswerVisibility(2)" id="r2-toggle-btn">👁 보기</button>
+    </div>
   </div>
 
   <div class="reset-panel">
@@ -186,6 +243,12 @@
 
   <div style="text-align:center; font-size:12px; color:#475569; margin-top: 10px; padding-bottom: 10px;">
     Created by 조성주 T
+  </div>
+
+  <div id="hint-banner">
+    <div class="hint-label">💡 힌트 요청</div>
+    <div class="hint-name" id="hint-banner-name"></div>
+    <button onclick="dismissHint()" style="padding:10px 24px;">확인 (닫기)</button>
   </div>
 
   <script type="module">
@@ -361,13 +424,46 @@
 
     // ---------- 실시간 제출 현황 (현재 라운드 기준) ----------
     let latestCurrentRound = 1;
+    let latestQuizState = {};
     onValue(ref(db, 'quizState'), (snap) => {
       const s = snap.val() || {};
+      latestQuizState = s;
       latestCurrentRound = s.currentRound || 1;
       document.getElementById('current-round-label').innerText = s.isRoundActive
         ? `${latestCurrentRound}라운드 진행 중`
         : (s.finalDone ? '종료 (최종 결과 발표됨)' : `${latestCurrentRound}라운드 대기`);
     });
+
+    // 학생 화면에 표시되는 것과 동일한 남은 시간을 관리자 화면에도 실시간으로 표시
+    setInterval(() => {
+      const r1Timer = document.getElementById('r1-live-timer');
+      const r2Timer = document.getElementById('r2-live-timer');
+      r1Timer.innerText = '';
+      r2Timer.innerText = '';
+      if (latestQuizState.isRoundActive && latestQuizState.endTime) {
+        const timeLeft = Math.max(0, Math.floor((latestQuizState.endTime - Date.now()) / 1000));
+        const m = Math.floor(timeLeft / 60);
+        const s = timeLeft % 60;
+        const text = `학생 화면: ${m}분${String(s).padStart(2, '0')}초`;
+        if (latestQuizState.currentRound === 1) r1Timer.innerText = text;
+        else if (latestQuizState.currentRound === 2) r2Timer.innerText = text;
+      }
+    }, 200);
+
+    // ---------- 힌트 요청 ----------
+    onValue(ref(db, 'hintRequest'), (snap) => {
+      const req = snap.val();
+      const banner = document.getElementById('hint-banner');
+      if (req) {
+        document.getElementById('hint-banner-name').innerText = req.id;
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    });
+    window.dismissHint = function () {
+      set(ref(db, 'hintRequest'), null);
+    };
 
     onValue(ref(db, 'submissions'), (snap) => {
       const all = snap.val() || {};
@@ -394,12 +490,25 @@
     }
 
     // ---------- 초기화 ----------
+    window.toggleAnswerVisibility = function (roundNum) {
+      const input = document.getElementById(`r${roundNum}-answer`);
+      const btn = document.getElementById(`r${roundNum}-toggle-btn`);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerText = '🙈 숨기기';
+      } else {
+        input.type = 'password';
+        btn.innerText = '👁 보기';
+      }
+    };
+
     window.resetAll = function () {
       if (!confirm('문제(정답/시간)와 모든 학생 기록을 전부 초기화합니다. 계속할까요?')) return;
       set(ref(db, 'config'), null);
       set(ref(db, 'quizState'), null);
       set(ref(db, 'submissions'), null);
       set(ref(db, 'results'), null);
+      set(ref(db, 'hintRequest'), null);
       document.getElementById('result-board').style.display = 'none';
       alert('전체 초기화 완료.');
     };
@@ -409,6 +518,7 @@
       set(ref(db, 'quizState'), null);
       set(ref(db, 'submissions'), null);
       set(ref(db, 'results'), null);
+      set(ref(db, 'hintRequest'), null);
       document.getElementById('result-board').style.display = 'none';
       alert('학생 기록 초기화 완료. (정답/시간 설정은 그대로 유지됩니다)');
     };

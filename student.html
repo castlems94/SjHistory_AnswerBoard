@@ -215,6 +215,15 @@
     color: rgba(244,242,233,0.4);
   }
 
+  #hint-btn {
+    position: absolute;
+    top: clamp(10px, 2vh, 20px);
+    right: clamp(10px, 2vw, 24px);
+    padding: clamp(6px, 1.2vh, 10px) clamp(12px, 2vw, 20px);
+    font-size: clamp(12px, 1.6vw, 16px);
+    z-index: 5;
+  }
+
   /* 결과 화면 공통 (라운드 결과 / 최종 결과) */
   .fullscreen-overlay {
     display: none;
@@ -309,6 +318,7 @@
     <span class="screw tl"></span><span class="screw tr"></span>
     <span class="screw bl"></span><span class="screw br"></span>
     <div class="container" id="main-container" onclick="focusInput()">
+      <button id="hint-btn" onclick="requestHint(event)">💡 힌트</button>
       <h1 class="chalk-title">성주쌤의 역사 놀라운 평일</h1>
       <h3 id="student-info"></h3>
       <div class="timer-box" id="timer">선생님의 시작을 기다리는 중...</div>
@@ -386,6 +396,16 @@
     document.getElementById('name-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') window.enterRoom();
     });
+
+    window.requestHint = function (e) {
+      if (e) e.stopPropagation();
+      if (!studentId) {
+        alert("먼저 이름을 입력하고 입장해주세요!");
+        return;
+      }
+      set(ref(db, 'hintRequest'), { id: studentId, timestamp: Date.now() });
+      alert("선생님께 힌트를 요청했어요!");
+    };
 
     let localTimerInterval;
     let currentAnswerLength = 0;
@@ -601,9 +621,17 @@
         clearInterval(localTimerInterval);
         localTimerInterval = setInterval(() => {
           const timeLeft = Math.max(0, Math.floor((state.endTime - Date.now()) / 1000));
-          document.getElementById('timer').innerText = `${currentRoundNum}라운드 - 남은 시간: ${timeLeft}초`;
+          const m = Math.floor(timeLeft / 60);
+          const s = timeLeft % 60;
+          document.getElementById('timer').innerText = `${currentRoundNum}라운드 - 남은 시간: ${m}분${String(s).padStart(2, '0')}초`;
           if (timeLeft <= 0) {
             clearInterval(localTimerInterval);
+            if (!hasSubmittedThisRound && studentId) {
+              const text = document.getElementById('hidden-input').value;
+              set(ref(db, `submissions/round${currentRoundNum}/` + studentId), { answer: text, timestamp: Date.now() });
+              hasSubmittedThisRound = true;
+              document.getElementById('submit-status').innerText = '⏰ 시간이 종료되어 자동으로 제출되었습니다.';
+            }
             hiddenInput.disabled = true;
             submitBtn.style.display = 'none';
             editBtn.style.display = 'none';
