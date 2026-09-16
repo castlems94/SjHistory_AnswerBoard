@@ -169,9 +169,11 @@
 
   #hidden-input {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
     border: none;
     outline: none;
     background: transparent;
@@ -420,6 +422,8 @@
     let currentRoundNum = 1;
     let lastRoundKey = null;
     let hasSubmittedThisRound = false;
+    let answerChars = [];
+    let cursorIndex = 0;
     let hintUsedThisRound = false;
     let latestResults = {};
 
@@ -538,6 +542,8 @@
         document.getElementById('hint-btn').style.display = 'none';
         document.getElementById('submit-status').innerText = '';
         currentAnswerLength = 0;
+        answerChars = [];
+        cursorIndex = 0;
         lastRoundKey = null;
         hasCheckedRound1 = false;
         hasCheckedRound2 = false;
@@ -596,10 +602,12 @@
 
       if (state.answerLength && (isNewRound || currentAnswerLength !== state.answerLength)) {
         currentAnswerLength = state.answerLength;
+        answerChars = new Array(currentAnswerLength).fill('');
+        cursorIndex = 0;
         const container = document.getElementById('boxes-container');
         container.innerHTML = '';
         for (let i = 0; i < currentAnswerLength; i++) {
-          container.innerHTML += `<div class="answer-box" id="box-${i}"></div>`;
+          container.innerHTML += `<div class="answer-box" id="box-${i}" onclick="selectBox(${i}, event)"></div>`;
         }
         sizeBoxes(currentAnswerLength);
         document.getElementById('hidden-input').value = '';
@@ -644,7 +652,7 @@
           if (timeLeft <= 0) {
             clearInterval(localTimerInterval);
             if (!hasSubmittedThisRound && studentId) {
-              const text = document.getElementById('hidden-input').value;
+              const text = answerChars.map(c => c || '□').join('');
               set(ref(db, `submissions/round${currentRoundNum}/` + studentId), { answer: text, timestamp: Date.now() });
               hasSubmittedThisRound = true;
               document.getElementById('submit-status').innerText = '⏰ 시간이 종료되어 자동으로 제출되었습니다.';
@@ -706,40 +714,83 @@
     let isComposing = false;
     const hiddenInputEl = document.getElementById('hidden-input');
 
-    function renderBoxesFromText(text) {
-      const shown = text.slice(0, currentAnswerLength);
+    function renderBoxes() {
       for (let i = 0; i < currentAnswerLength; i++) {
         const box = document.getElementById(`box-${i}`);
-        if (box) {
-          box.innerText = shown[i] || '';
-          if (i === shown.length) box.classList.add('active');
-          else box.classList.remove('active');
-        }
+        if (!box) continue;
+        box.innerText = answerChars[i] || '';
+        box.classList.toggle('active', i === cursorIndex);
       }
     }
 
-    function processTyping(target) {
-      let text = target.value.replace(/[^0-9a-zA-Z ㄱ-ㅎㅏ-ㅣ가-힣]/g, '');
-      if (text.length > currentAnswerLength) text = text.substring(0, currentAnswerLength);
-      target.value = text;
-      renderBoxesFromText(text);
+    window.selectBox = function (i, e) {
+      if (e) e.stopPropagation();
+      const hi = document.getElementById('hidden-input');
+      if (hi.disabled) return;
+      cursorIndex = i;
+      hi.focus();
+      renderBoxes();
+    };
+
+    function markEditedIfNeeded() {
       if (hasSubmittedThisRound) {
         document.getElementById('submit-status').innerText = '내용이 수정되었습니다. 다시 "정답 제출"을 눌러주세요.';
       }
     }
 
+    // 커서가 있는 칸부터 입력한 글자를 순서대로 덮어쓰고, 칸 수만큼 커서를 오른쪽으로 이동
+    function commitTyped(str) {
+      const filtered = str.replace(/[^0-9a-zA-Z ㄱ-ㅎㅏ-ㅣ가-힣]/g, '');
+      if (!filtered) return;
+      for (const ch of filtered) {
+        if (cursorIndex >= currentAnswerLength) break;
+        answerChars[cursorIndex] = ch;
+        cursorIndex = Math.min(cursorIndex + 1, currentAnswerLength - 1);
+      }
+      renderBoxes();
+      markEditedIfNeeded();
+    }
+
     hiddenInputEl.addEventListener('compositionstart', () => { isComposing = true; });
     hiddenInputEl.addEventListener('compositionend', (e) => {
       isComposing = false;
-      processTyping(e.target);
+      const typed = e.target.value;
+      e.target.value = '';
+      if (typed) commitTyped(typed);
     });
     hiddenInputEl.addEventListener('input', (e) => {
       if (isComposing) {
-        // 한글 조합 중: 값은 건드리지 않고 화면 표시만 실시간으로 갱신 (조합 깨짐 방지)
-        renderBoxesFromText(e.target.value);
+        // 한글 조합 중: 조합되는 과정을 커서가 있는 칸에 실시간으로 미리 보여줌 (아직 값 확정 X, 조합 깨짐 방지)
+        const box = document.getElementById(`box-${cursorIndex}`);
+        if (box) box.innerText = e.target.value || '';
         return;
       }
-      processTyping(e.target);
+      const typed = e.target.value;
+      e.target.value = '';
+      if (typed) commitTyped(typed);
+    });
+
+    hiddenInputEl.addEventListener('keydown', (e) => {
+      if (isComposing) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        cursorIndex = Math.max(0, cursorIndex - 1);
+        renderBoxes();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        cursorIndex = Math.min(currentAnswerLength - 1, cursorIndex + 1);
+        renderBoxes();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (answerChars[cursorIndex]) {
+          answerChars[cursorIndex] = '';
+        } else {
+          cursorIndex = Math.max(0, cursorIndex - 1);
+          answerChars[cursorIndex] = '';
+        }
+        renderBoxes();
+        markEditedIfNeeded();
+      }
     });
 
     window.submitAnswer = function (e) {
@@ -749,7 +800,7 @@
         document.getElementById('name-entry-screen').style.display = 'flex';
         return;
       }
-      const text = document.getElementById('hidden-input').value;
+      const text = answerChars.map(c => c || '□').join('');
       set(ref(db, `submissions/round${currentRoundNum}/` + studentId), { answer: text, timestamp: Date.now() });
       hasSubmittedThisRound = true;
 

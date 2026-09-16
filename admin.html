@@ -516,17 +516,24 @@
         renderFinalResultBoard(r.final.ranking);
         if (!admShownFinal) {
           admShownFinal = true;
-          showAdminOverlay('🏆 최종 결과 (1+2라운드 합산) 🏆', r.final.ranking.map((item, idx) =>
-            `${idx + 1}등. ${escapeHtml(item.id)} — 총 맞은 글자 ${item.totalCorrect}개`
-          ));
+          const answerLen = (r.round2 && r.round2.answerLength) || 0;
+          const delay = answerLen * 350 + 1800; // 학생 화면의 칸별 채점 애니메이션과 동일한 시간만큼 대기
+          setTimeout(() => {
+            showAdminOverlay('🏆 최종 결과 (1+2라운드 합산) 🏆', r.final.ranking.map((item, idx) =>
+              `${idx + 1}등. ${escapeHtml(item.id)} — 총 맞은 글자 ${item.totalCorrect}개`
+            ));
+          }, delay);
         }
       } else if (r.round1 && !r.round2) {
         renderResultBoard('1라운드 결과', r.round1.ranking, r.round1.answerLength);
         if (!admShownRound1) {
           admShownRound1 = true;
-          showAdminOverlay('🥇 1라운드 결과 🥇', r.round1.ranking.map((item, idx) =>
-            `${idx + 1}등. ${escapeHtml(item.id)} — 맞은 글자 ${item.correct}/${r.round1.answerLength}`
-          ));
+          const delay = (r.round1.answerLength || 0) * 350 + 1800;
+          setTimeout(() => {
+            showAdminOverlay('🥇 1라운드 결과 🥇', r.round1.ranking.map((item, idx) =>
+              `${idx + 1}등. ${escapeHtml(item.id)} — 맞은 글자 ${item.correct}/${r.round1.answerLength}`
+            ));
+          }, delay);
         }
       }
     });
