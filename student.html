@@ -690,19 +690,32 @@
     });
 
     // 각 칸이 독립된 실제 입력창이라, 한글 조합은 그 칸 안에서 자연스럽게 이루어짐 (여러 칸에 나눠 써지는 문제 방지)
+    // 낱자모(ㄱ-ㅎ, ㅏ-ㅣ) 유니코드 범위: 아직 조합이 안 끝난 상태일 가능성이 높은 글자
+    function isLoneJamo(ch) {
+      if (!ch) return false;
+      const code = ch.codePointAt(0);
+      return code >= 0x3131 && code <= 0x318E;
+    }
+
     function attachBoxHandlers() {
       for (let i = 0; i < currentAnswerLength; i++) {
         const box = document.getElementById(`box-${i}`);
         if (!box) continue;
 
-        box.addEventListener('compositionstart', () => { box.dataset.composing = '1'; });
+        box.addEventListener('compositionstart', () => {
+          box.dataset.composing = '1';
+          // 일부 태블릿 브라우저는 compositionend를 안 보내는 경우가 있어, 일정 시간 뒤 안전하게 조합 상태를 풀어줌
+          clearTimeout(box._compSafety);
+          box._compSafety = setTimeout(() => { box.dataset.composing = ''; }, 1200);
+        });
         box.addEventListener('compositionend', () => {
+          clearTimeout(box._compSafety);
           box.dataset.composing = '';
-          finalizeBox(i);
+          finalizeBox(i, true);
         });
         box.addEventListener('input', () => {
           if (box.dataset.composing === '1') return; // 조합 중에는 그대로 두어 브라우저가 자연스럽게 조합하게 둠
-          finalizeBox(i);
+          finalizeBox(i, false);
         });
         box.addEventListener('keydown', (e) => {
           if (box.dataset.composing === '1') return;
@@ -727,17 +740,30 @@
       }
     }
 
-    function finalizeBox(i) {
+    // confirmed: compositionend를 통해 확정된 경우(true) → 바로 확정.
+    // 그 외(false, 조합 이벤트가 아예 안 오는 태블릿 등): 완성된 음절/숫자/영문이면 바로 확정,
+    // 아직 낱자모 상태(예: "ㅎ")면 추가 입력을 잠깐 기다렸다가 확정 (여러 칸에 자모가 흩어지는 것 방지)
+    function finalizeBox(i, confirmed) {
       const box = document.getElementById(`box-${i}`);
       if (!box) return;
       let v = box.value.replace(/[^0-9a-zA-Z ㄱ-ㅎㅏ-ㅣ가-힣]/g, '');
-      v = v.slice(-1); // 한 칸에는 완성된 글자 하나만
+      v = v.slice(-1);
       box.value = v;
       answerChars[i] = v;
       markEditedIfNeeded();
-      if (v && i < currentAnswerLength - 1) {
-        focusBox(i + 1);
+
+      clearTimeout(box._settleTimer);
+
+      if (confirmed || !isLoneJamo(v)) {
+        if (v && i < currentAnswerLength - 1) focusBox(i + 1);
+        return;
       }
+      // 아직 낱자모(조합 중일 가능성) → 잠깐 대기 후에도 그대로면 확정하고 다음 칸으로
+      box._settleTimer = setTimeout(() => {
+        if (document.activeElement === box && box.value === v && i < currentAnswerLength - 1) {
+          focusBox(i + 1);
+        }
+      }, 450);
     }
 
     function focusBox(i) {
